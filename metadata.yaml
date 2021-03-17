@@ -1,0 +1,4 @@
+homepage: "https://captivated.works/"
+versions:
+  - sha: 7295256f5bf2a94c0c28b210538cd8ce52d0cde7
+    changeNotes: Initial release.
