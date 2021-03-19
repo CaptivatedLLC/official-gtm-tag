@@ -58,11 +58,11 @@ function onLoadFailure() {
 }
 
 function loadCaptivated() {
-  /*var app_id = data.app_id;
-  if (!app_id) {
+  var widget_id = data.widget_id;
+  if (!widget_id) {
     data.gtmOnFailure();
     return;
-  }*/
+  }
   const url = 'https://api.captivated.works/widget.js?id=' + data.widget_id;
   injectScript(url, onLoadSuccess, onLoadFailure, url);
 }
