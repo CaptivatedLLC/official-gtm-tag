@@ -43,6 +43,7 @@ ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
 // Enter your template code here.
 const log = require('logToConsole');
+const encodeUriComponent = require('encodeUriComponent');
 const injectScript = require('injectScript');
 
 log('data =', data);
@@ -63,7 +64,7 @@ function loadCaptivated() {
     data.gtmOnFailure();
     return;
   }
-  const url = 'https://api.captivated.works/widget.js?id=' + data.widget_id;
+  const url = 'https://api.captivated.works/widget.js?id=' + encodeUriComponent(data.widget_id);
   injectScript(url, onLoadSuccess, onLoadFailure, url);
 }
 
