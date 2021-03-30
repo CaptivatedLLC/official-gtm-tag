@@ -1,8 +1,10 @@
 homepage: "https://captivated.works/"
 versions:
   # Latest version
+  - sha: 98637e5c9607f9f226f019e983cf2e777554d951
+    changedNotes: Added event handling, converted Widget ID to Widget Script URL for more flexibility.
+  # Older versions
   - sha: 94d12aeb58846ab4401769fad71123c6e79649e1
     changedNotes: Proper URI encoding of the widget ID.
-  # Older versions
   - sha: cd879c643285f5cd3c5588f70f6ae8f516c7d442
     changeNotes: Initial release.
