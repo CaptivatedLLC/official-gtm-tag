@@ -31,20 +31,166 @@ ___TEMPLATE_PARAMETERS___
 
 [
   {
-    "type": "TEXT",
-    "name": "widget_id",
-    "displayName": "Captivated Widget ID",
-    "simpleValueType": true
+    "type": "GROUP",
+    "name": "method_group",
+    "displayName": "Method / Event",
+    "groupStyle": "NO_ZIPPY",
+    "subParams": [
+      {
+        "type": "SELECT",
+        "name": "method",
+        "displayName": "The method or event to attach to. Leave blank or select Install to install it on the page. The widget must be installed for any other method to work.",
+        "macrosInSelect": true,
+        "selectItems": [
+          {
+            "value": "install",
+            "displayValue": "Install Captivated on the page"
+          },
+          {
+            "value": "onOpened",
+            "displayValue": "When the Captivated widget window is opened"
+          },
+          {
+            "value": "onClosed",
+            "displayValue": "When the Captivated widget window is closed"
+          },
+          {
+            "value": "onChatRegistered",
+            "displayValue": "When the visitor initiates a chat conversation"
+          },
+          {
+            "value": "onSentChatMessage",
+            "displayValue": "When the visitor sends a chat message"
+          },
+          {
+            "value": "onSentTextMessage",
+            "displayValue": "When the visitor sends a text message"
+          },
+          {
+            "value": "onChatEnded",
+            "displayValue": "When the visitor ends the chat"
+          }
+        ],
+        "simpleValueType": true
+      }
+    ]
+  },
+  {
+    "type": "GROUP",
+    "name": "method_arguments",
+    "displayName": "Additional Details",
+    "groupStyle": "ZIPPY_OPEN",
+    "subParams": [
+      {
+        "type": "TEXT",
+        "name": "widget_script_url",
+        "displayName": "Widget Script URL",
+        "simpleValueType": true,
+        "help": "The unique URL of your widget script. It can be extracted from your short code.  It typically looks like the following: https://api.captivated.works/widget.js?id\u003d1157b856-7d3b-11e7-b4d5-e3842bdc5072",
+        "enablingConditions": [
+          {
+            "paramName": "method",
+            "paramValue": "install",
+            "type": "EQUALS"
+          },
+          {
+            "paramName": "method",
+            "paramValue": "",
+            "type": "NOT_PRESENT"
+          }
+        ]
+      },
+      {
+        "type": "TEXT",
+        "name": "callback_event_name",
+        "displayName": "Event Name",
+        "simpleValueType": true,
+        "help": "Trigger the specified dataLayer event when the specified action occurs. If left blank, a default event name will be used, e.g. \"captivated-widget-opened\".",
+        "enablingConditions": [
+          {
+            "paramName": "method",
+            "paramValue": "onOpened",
+            "type": "EQUALS"
+          },
+          {
+            "paramName": "method",
+            "paramValue": "onClosed",
+            "type": "EQUALS"
+          },
+          {
+            "paramName": "method",
+            "paramValue": "onChatRegistered",
+            "type": "EQUALS"
+          },
+          {
+            "paramName": "method",
+            "paramValue": "onSentChatMessage",
+            "type": "EQUALS"
+          },
+          {
+            "paramName": "method",
+            "paramValue": "onSentTextMessage",
+            "type": "EQUALS"
+          },
+          {
+            "paramName": "method",
+            "paramValue": "onChatEnded",
+            "type": "EQUALS"
+          }
+        ]
+      }
+    ],
+    "enablingConditions": [
+      {
+        "paramName": "method",
+        "paramValue": "onOpened",
+        "type": "EQUALS"
+      },
+      {
+        "paramName": "method",
+        "paramValue": "onClosed",
+        "type": "EQUALS"
+      },
+      {
+        "paramName": "method",
+        "paramValue": "onChatRegistered",
+        "type": "EQUALS"
+      },
+      {
+        "paramName": "method",
+        "paramValue": "onSentChatMessage",
+        "type": "EQUALS"
+      },
+      {
+        "paramName": "method",
+        "paramValue": "onSentTextMessage",
+        "type": "EQUALS"
+      },
+      {
+        "paramName": "method",
+        "paramValue": "onChatEnded",
+        "type": "EQUALS"
+      },
+      {
+        "paramName": "method",
+        "paramValue": "install",
+        "type": "EQUALS"
+      }
+    ]
   }
 ]
 
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
-// Enter your template code here.
 const log = require('logToConsole');
 const encodeUriComponent = require('encodeUriComponent');
 const injectScript = require('injectScript');
+const callInWindow = require('callInWindow');
+const copyFromWindow = require('copyFromWindow');
+const setInWindow = require('setInWindow');
+const createQueue = require('createQueue');
+const dataLayerPush = createQueue('dataLayer');
 
 log('data =', data);
 
@@ -58,17 +204,90 @@ function onLoadFailure() {
   data.gtmOnFailure();
 }
 
-function loadCaptivated() {
-  var widget_id = data.widget_id;
-  if (!widget_id) {
+function install() {
+  var widget_script_url = data.widget_script_url;
+  if (!widget_script_url) {
     data.gtmOnFailure();
     return;
   }
-  const url = 'https://api.captivated.works/widget.js?id=' + encodeUriComponent(data.widget_id);
-  injectScript(url, onLoadSuccess, onLoadFailure, url);
+  injectScript(widget_script_url, onLoadSuccess, onLoadFailure, widget_script_url);
 }
 
-loadCaptivated();
+function addEventListener(event, callback) {
+  var widget = copyFromWindow('CaptivatedWidget');
+  if (!widget) {
+    setInWindow('CaptivatedWidget', { eventQueue: [] });
+  }
+  var eventQueue = copyFromWindow('CaptivatedWidget.eventQueue');
+  if (eventQueue) {
+    callInWindow('CaptivatedWidget.eventQueue.push', { event: event, callback: callback });
+  } else {
+    callInWindow('CaptivatedWidget.addEventListener', { event: event, callback: callback });
+  }
+}
+
+function registerCallback(event) {
+  if (!event) {
+    data.gtmOnFailure();
+    return;
+  }
+  var callbackEventName = data.callback_event_name || 'captivated-widget-' + event;
+  log("registering callback: ", event, callbackEventName);
+  var callback = function(e) {
+    log("Captivated callback fired: ", event, callbackEventName);
+    var dataToPush = {'event': callbackEventName};
+    dataToPush.data = e.detail;
+    dataLayerPush(dataToPush);
+  };
+  addEventListener(event, callback);
+  data.gtmOnSuccess();
+}
+
+function onOpened() {
+  registerCallback('opened');
+}
+
+function onClosed() {
+  registerCallback('closed');
+}
+
+function onChatRegistered() {
+  registerCallback('chat-registered');
+}
+
+function onSentChatMessage() {
+  registerCallback('sent-chat-message');
+}
+
+function onSentTextMessage() {
+  registerCallback('sent-text-message');
+}
+
+function onChatEnded() {
+  registerCallback('chat-ended');
+}
+
+var methodMap = {
+  install: install,
+  onOpened: onOpened,
+  onClosed: onClosed,
+  onChatRegistered: onChatRegistered,
+  onSentChatMessage: onSentChatMessage,
+  onSentTextMessage: onSentTextMessage,
+  onChatEnded: onChatEnded
+};
+
+function main() {
+  let fn = methodMap[data.method || 'install'];
+  if (!fn) {
+    data.gtmOnFailure();
+    return;
+  }
+  fn();
+}
+
+
+main();
 
 
 ___WEB_PERMISSIONS___
@@ -107,6 +326,227 @@ ___WEB_PERMISSIONS___
               {
                 "type": 1,
                 "string": "https://api.captivated.works/*"
+              },
+              {
+                "type": 1,
+                "string": "https://aws.captivated.works/*"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "access_globals",
+        "versionId": "1"
+      },
+      "param": [
+        {
+          "key": "keys",
+          "value": {
+            "type": 2,
+            "listItem": [
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "dataLayer"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "CaptivatedWidget"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "CaptivatedWidget.eventQueue"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "CaptivatedWidget.eventQueue.push"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "CaptivatedWidget.addEventListener"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  }
+                ]
               }
             ]
           }
@@ -128,4 +568,4 @@ scenarios: []
 
 ___NOTES___
 
-Created on 3/17/2021, 4:24:25 PM
+Created on 3/30/2021, 1:58:57 PM
